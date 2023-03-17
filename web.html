@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>hello-wasm example</title>
+  </head>
+  <body>
+    <script type="module">
+      import init, { greet, split } from "./pkg/vsss_wasm.js";
+      
+      function buf2hex(buffer) { // buffer is an ArrayBuffer
+        return [...new Uint8Array(buffer)]
+            .map(x => x.toString(16).padStart(2, '0'))
+            .join('');
+      }
+
+      init().then(() => {
+        var out = split([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255]);
+        console.log(buf2hex(out.slice(0,31)));
+        console.log(buf2hex(out.slice(32,63)));
+        console.log(buf2hex(out.slice(64,95)));
+        console.log(buf2hex(out.slice(96,127)));
+        console.log(buf2hex(out.slice(128,159)));
+      });
+    </script>
+  </body>
+</html>

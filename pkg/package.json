@@ -1,0 +1,12 @@
+{
+  "name": "vsss-wasm",
+  "version": "0.1.0",
+  "files": [
+    "vsss_wasm_bg.wasm",
+    "vsss_wasm.js",
+    "vsss_wasm.d.ts"
+  ],
+  "module": "vsss_wasm.js",
+  "types": "vsss_wasm.d.ts",
+  "sideEffects": false
+}
