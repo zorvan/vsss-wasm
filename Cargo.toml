@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = "0.2"
@@ -14,11 +14,11 @@ vsss-rs={version = "2.7.1", features = ["curve25519", "secp256k1"]}
 
 elliptic-curve = { version = "0.12", features = ["ecdh"] }
 curve25519-dalek = { version = "3" }
-bls12_381_plus = "0.5.5"
-ed25519-dalek = "1.0"
-x25519-dalek = "1.1"
-k256 = { version = "0.11.6", features = ["arithmetic", "bits"] }
-p256 = { version = "0.11.1", features = ["arithmetic", "bits"] }
+#bls12_381_plus = "0.5.5"
+#ed25519-dalek = "1.0"
+#x25519-dalek = "1.1"
+#k256 = { version = "0.11.6", features = ["arithmetic", "bits"] }
+#p256 = { version = "0.11.1", features = ["arithmetic", "bits"] }
 
 rand = "0.8"
 rand_7 = { version = "0.7", package = "rand" }

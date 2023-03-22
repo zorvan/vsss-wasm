@@ -6,7 +6,7 @@
   </head>
   <body>
     <script type="module">
-      import init, { greet, split } from "./pkg/vsss_wasm.js";
+      import init, {split_secret, combine_secret, generate_secret,verify_secret} from "./pkg/vsss_wasm.js";
       
       function buf2hex(buffer) { // buffer is an ArrayBuffer
         return [...new Uint8Array(buffer)]
@@ -15,12 +15,28 @@
       }
 
       init().then(() => {
-        var out = split([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255]);
-        console.log(buf2hex(out.slice(0,31)));
-        console.log(buf2hex(out.slice(32,63)));
-        console.log(buf2hex(out.slice(64,95)));
-        console.log(buf2hex(out.slice(96,127)));
-        console.log(buf2hex(out.slice(128,159)));
+        // We need to create the secret that conforms to curv25519 for secret sharing.
+        var secret = generate_secret();
+        console.log("secret : ", buf2hex(secret));
+
+        var out = split_secret(secret);
+        
+        // each share is 32 bytes with two additional bytes for encoding
+        var share1 = out.slice(0  ,34);
+        var share2 = out.slice(34 ,67);
+        var share3 = out.slice(68 ,101);
+        var share4 = out.slice(102 ,135);
+        var share5 = out.slice(136,169);
+
+        var verifier = out.slice(170); // to the end
+        console.log("verifer length : ", verifier.length);
+
+        var verify = verify_secret(share3, verifier);
+        console.log("verify 3rd share : ", verify);
+
+        var reconstructed_secret = combine_secret(share1.concat(share3).concat(share5));
+        console.log("combined secret : ", buf2hex(reconstructed_secret));
+
       });
     </script>
   </body>
