@@ -19,7 +19,7 @@ at the base directory run this command :
 $ python -m simple_http_server
 ```
 
-then open [localhost:9090/web.html](localhost:9090/web.html)
+then open [localhost:9090/web.html](http://localhost:9090/web.html)
 
 then look at browser console logs in verbose mode.
 
