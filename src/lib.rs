@@ -1,11 +1,13 @@
+//use console_error_panic_hook;
+
 use wasm_bindgen::prelude::*;
 use vsss_rs::{
     curve25519::{WrappedRistretto, WrappedScalar},
     Feldman, FeldmanVerifier,Share,
 };
 use curve25519_dalek::scalar::Scalar;
-use rand::rngs::OsRng;
-use hex;
+use rand::{rngs::OsRng, SeedableRng, RngCore};
+use rand_chacha::ChaCha20Rng;
 
 const SHARES_NUMBER:usize = 5;
 const THRESHOLD:usize = 3;
@@ -15,9 +17,13 @@ const ENCODED_SIZE:usize = 34;
 /* GENERATE SECRET */
 #[wasm_bindgen]
 pub fn generate_secret() -> Result<Vec<u8>, JsValue> {
-    let mut osrng7 = rand_7::rngs::OsRng::default();
-    let sc = Scalar::random(&mut osrng7);
-    
+    //console_error_panic_hook::set_once();
+
+    let mut rng = ChaCha20Rng::from_entropy();
+    let mut scalar_bytes = [0u8; 64];
+    rng.fill_bytes(&mut scalar_bytes);
+    let sc = Scalar::from_bytes_mod_order_wide(&scalar_bytes);
+       
     Ok(sc.as_bytes().to_vec())
 }
 
@@ -25,38 +31,39 @@ pub fn generate_secret() -> Result<Vec<u8>, JsValue> {
 #[wasm_bindgen]
 pub fn split_secret(secret: &[u8]) -> Result<Vec<u8>, JsValue> {
     
-    //alert(&format!("input, {}!", hex::encode(secret.clone())));
-
     let mut osrng = OsRng::default();
     
-    //alert(&format!("working-1!"));
-    //alert(&format!("secret size = {}", secret.len()));
-    
     let mut secret_bound: [u8; 32] = Default::default();
-    //alert(&format!("working-2-1!"));
 
     secret_bound.copy_from_slice(&secret);
-    //alert(&format!("working-2-2!"));
 
     let sk = Scalar::from_bits(secret_bound);
-    //alert(&format!("working-2-3!"));
 
     let res = Feldman::<THRESHOLD, SHARES_NUMBER>::split_secret::<WrappedScalar, WrappedRistretto, OsRng, SECRET_SIZE>(
         sk.into(),
         None,
         &mut osrng,
     );
-    //alert(&format!("working-3!"));
 
-    let (shares, verifier) = res.unwrap();
+    let (shares, verifier) = match res {
+        Ok(tuple) => tuple,
+        Err(e) => return Err(e.to_string().into()),
+    };
     
     let res = serde_bare::to_vec(&verifier);
-    let mut v_bytes: Vec<u8> = res.unwrap();
+    let mut v_bytes: Vec<u8> = match res {
+        Ok(vbytes) => vbytes,
+        Err(e) => return Err(e.to_string().into()),
+    };
 
     let mut s_bytes: Vec<u8> = Vec::<u8>::new();
 
     for i in 0..shares.len() {
-        let mut res = serde_bare::to_vec(&shares[i]).unwrap();
+        let mut res = match serde_bare::to_vec(&shares[i]) {
+            Ok(encoded) => encoded,
+            Err(e) => return Err(e.to_string().into()),
+        };
+
         s_bytes.append(&mut res);
     }
     
@@ -68,12 +75,20 @@ pub fn split_secret(secret: &[u8]) -> Result<Vec<u8>, JsValue> {
 /* VERIFY */
 #[wasm_bindgen]
 pub fn verify_secret(share_bytes: &[u8], verifier_bytes: &[u8]) -> Result<bool, JsValue> {
+    
     let res =
         serde_bare::from_slice::<FeldmanVerifier<WrappedScalar, WrappedRistretto, THRESHOLD>>(&verifier_bytes);
-    
-    let verifier = res.unwrap();
-    
-    let share:Share<SECRET_SIZE> = serde_bare::from_slice(share_bytes).unwrap();
+
+    let verifier = match res {
+        Ok(fv) => fv,
+        Err(e) => return Err(e.to_string().into()),
+    };
+
+    let share:Share<SECRET_SIZE> = match serde_bare::from_slice(share_bytes) {
+        Ok(share) => share,
+        Err(e) => return Err(e.to_string().into()),
+    };
+
     let res = verifier.verify(&share);
 
     Ok(res)
@@ -85,15 +100,31 @@ pub fn combine_secret(share_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
     let mut share_bound: Vec<Share<SECRET_SIZE>> = Default::default();
 
     for i in 0..share_bytes.len()/ENCODED_SIZE {
-        let sliced_share:[u8;ENCODED_SIZE] = share_bytes[i*ENCODED_SIZE..(i+1)*ENCODED_SIZE].try_into().unwrap();
-        let share:Share<SECRET_SIZE> = serde_bare::from_slice(&sliced_share).unwrap();
+        let sliced_share:[u8;ENCODED_SIZE] = match share_bytes[i*ENCODED_SIZE..(i+1)*ENCODED_SIZE].try_into() {
+            Ok(sliced) => sliced,
+            Err(e) => return Err(e.to_string().into()),
+        };
+
+        let share:Share<SECRET_SIZE> = match serde_bare::from_slice(&sliced_share) {
+            Ok(decoded) => decoded,
+            Err(e) => return Err(e.to_string().into()),
+        };
+
         share_bound.append(&mut [share].to_vec());
     }
     
     let res = Feldman::<THRESHOLD, SHARES_NUMBER>::combine_shares::<WrappedScalar, SECRET_SIZE>(&share_bound);
-    let scalar = res.unwrap().0;
+    let scalar = match res {
+        Ok(wrap) => wrap,
+        Err(e) =>  return Err(e.to_string().into()),
+    };
 
-    Ok(scalar.to_bytes().to_vec())
+    Ok(scalar.0.to_bytes().to_vec())
+}
+
+#[wasm_bindgen]
+extern {
+    fn alert(s: &str);
 }
 
 /* TEST */
@@ -119,7 +150,7 @@ mod tests {
             assert!(valid);
         }
 
-        let reconstructed_secret = combine_secret(&res[0..shareslen]).unwrap();
+        let reconstructed_secret = combine_secret(&res[3*ENCODED_SIZE..shareslen]).unwrap();
         
         assert_eq!(reconstructed_secret,secret);
     }

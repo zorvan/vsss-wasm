@@ -1,30 +1,39 @@
 # Description
-Publicly verifiable shamir secret sharing in rust/wasm.
+Porting publicly verifiable shamir secret sharing from Rust to WASM for javascript.
 
-secret size = 32 bytes
-verifier size = 32 bytes. (optional)
+secret size = 32 bytes.
+
+verifier size = 130 bytes. (optional)
 
 # Run
-```python
-python -m simple_http_server
-```
+You can use any web server, here I use python.
 
-open localhost:9090/web.html
-look at console logs.
-
-to install python simple web server : 
+To install Python simple web server : 
 ``` shell
-python -m pip install simple-http-server
+$ python -m pip install simple-http-server
 ```
+
+at the base directory run this command : 
+
+``` shell
+$ python -m simple_http_server
+```
+
+then open [localhost:9090/web.html](localhost:9090/web.html)
+
+then look at browser console logs in verbose mode.
 
 # Compile Wasm
 
+install **wasm-pack**  :
 ``` shell
-wasm-pack build --target web
+$ cargo install wasm-pack
+```
+
+to build the project : 
+
+``` shell
+$ wasm-pack build --release --target web
 ```
 There are other targets : nodejs, bundle
 
-wasm-pack can be installed with :
-``` shell
-cargo install wasm-pack
-```
