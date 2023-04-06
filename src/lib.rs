@@ -9,10 +9,10 @@ use curve25519_dalek::scalar::Scalar;
 use rand::{rngs::OsRng, SeedableRng, RngCore};
 use rand_chacha::ChaCha20Rng;
 
-const SHARES_NUMBER:usize = 5;
-const THRESHOLD:usize = 3;
-const SECRET_SIZE:usize = 33;
-const ENCODED_SIZE:usize = 34;
+pub const SHARES_NUMBER:usize = 5;
+pub const THRESHOLD:usize = 3;
+pub const SECRET_SIZE:usize = 33;
+pub const ENCODED_SIZE:usize = 34;
 
 /* GENERATE SECRET */
 #[wasm_bindgen]
@@ -155,3 +155,4 @@ mod tests {
         assert_eq!(reconstructed_secret,secret);
     }
 }
+

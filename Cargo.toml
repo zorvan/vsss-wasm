@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3.34"
 vsss-rs={version = "2.7.1", features = ["curve25519", "secp256k1"]}
 
 elliptic-curve = { version = "0.12", features = ["ecdh"] }
