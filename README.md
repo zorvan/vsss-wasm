@@ -12,12 +12,11 @@ install **wasm-pack**  :
 $ cargo install wasm-pack
 ```
 
-to build the project : 
+to build the project use one of the provided target options : 
 
 ``` shell
-$ wasm-pack build --release --target web
+$ wasm-pack build --release --target [web | nodejs | bundle]
 ```
-There are other targets : nodejs, bundle
 
 
 # Run
