@@ -3,7 +3,7 @@
 use wasm_bindgen::prelude::*;
 use vsss_rs::{
     curve25519::{WrappedRistretto, WrappedScalar},
-    Feldman, FeldmanVerifier,Share,
+    feldman, FeldmanVerifier,Share, combine_shares,
 };
 use curve25519_dalek::scalar::Scalar;
 use rand::{rngs::OsRng, SeedableRng, RngCore};
@@ -39,7 +39,8 @@ pub fn split_secret(secret: &[u8]) -> Result<Vec<u8>, JsValue> {
 
     let sk = Scalar::from_bits(secret_bound);
 
-    let res = Feldman::<THRESHOLD, SHARES_NUMBER>::split_secret::<WrappedScalar, WrappedRistretto, OsRng, SECRET_SIZE>(
+    
+    let res = feldman::split_secret::<WrappedScalar, WrappedRistretto, OsRng>(THRESHOLD, SHARES_NUMBER,
         sk.into(),
         None,
         &mut osrng,
@@ -77,19 +78,22 @@ pub fn split_secret(secret: &[u8]) -> Result<Vec<u8>, JsValue> {
 pub fn verify_secret(share_bytes: &[u8], verifier_bytes: &[u8]) -> Result<bool, JsValue> {
     
     let res =
-        serde_bare::from_slice::<FeldmanVerifier<WrappedScalar, WrappedRistretto, THRESHOLD>>(&verifier_bytes);
+        serde_bare::from_slice::<FeldmanVerifier<WrappedScalar, WrappedRistretto>>(&verifier_bytes);
 
     let verifier = match res {
         Ok(fv) => fv,
         Err(e) => return Err(e.to_string().into()),
     };
 
-    let share:Share<SECRET_SIZE> = match serde_bare::from_slice(share_bytes) {
+    let share:Share = match serde_bare::from_slice(share_bytes) {
         Ok(share) => share,
         Err(e) => return Err(e.to_string().into()),
     };
 
-    let res = verifier.verify(&share);
+    let res = match verifier.verify(&share) {
+        Ok(_) => true,
+        Err(e) => return Err(e.to_string().into()), 
+    };
 
     Ok(res)
 }
@@ -97,7 +101,7 @@ pub fn verify_secret(share_bytes: &[u8], verifier_bytes: &[u8]) -> Result<bool, 
 /* COMBINE */
 #[wasm_bindgen]
 pub fn combine_secret(share_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
-    let mut share_bound: Vec<Share<SECRET_SIZE>> = Default::default();
+    let mut share_bound: Vec<Share> = Default::default();
 
     for i in 0..share_bytes.len()/ENCODED_SIZE {
         let sliced_share:[u8;ENCODED_SIZE] = match share_bytes[i*ENCODED_SIZE..(i+1)*ENCODED_SIZE].try_into() {
@@ -105,7 +109,7 @@ pub fn combine_secret(share_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
             Err(e) => return Err(e.to_string().into()),
         };
 
-        let share:Share<SECRET_SIZE> = match serde_bare::from_slice(&sliced_share) {
+        let share:Share = match serde_bare::from_slice(&sliced_share) {
             Ok(decoded) => decoded,
             Err(e) => return Err(e.to_string().into()),
         };
@@ -113,7 +117,7 @@ pub fn combine_secret(share_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
         share_bound.append(&mut [share].to_vec());
     }
     
-    let res = Feldman::<THRESHOLD, SHARES_NUMBER>::combine_shares::<WrappedScalar, SECRET_SIZE>(&share_bound);
+    let res = combine_shares::<WrappedScalar>(&share_bound);
     let scalar = match res {
         Ok(wrap) => wrap,
         Err(e) =>  return Err(e.to_string().into()),
@@ -150,7 +154,7 @@ mod tests {
             assert!(valid);
         }
 
-        let reconstructed_secret = combine_secret(&res[3*ENCODED_SIZE..shareslen]).unwrap();
+        let reconstructed_secret = combine_secret(&res[2*ENCODED_SIZE..shareslen]).unwrap();
         
         assert_eq!(reconstructed_secret,secret);
     }
