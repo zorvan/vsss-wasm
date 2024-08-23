@@ -7,42 +7,33 @@ verifier size = 130 bytes. (optional)
 
 # Compile Wasm
 
-install **wasm-pack**  :
-``` shell
-$ cargo install wasm-pack
-```
+# Compile Wasm
 
-to build the project use one of the provided target options : 
+install **WASI**  :
 
 ``` shell
-$ wasm-pack build --release --target [web | nodejs | bundle]
+$ npm install -g @bytecodealliance/jco
+$ npm install -g @bytecodealliance/componentize-js
+$ rustup target install wasm32-wasi wasm32-wasip1 wasm32-wasip2
+$ cargo install cargo-component
 ```
 
+``` shell
+$ cargo component check
+$ cargo component test
+$ cargo component build --release
+```
+
+``` shell
+$ jco transpile target/wasm32-wasip1/release/vsss_wasm.wasm -o target
+```
 
 # Run
-
-## Web sample
-You can use any web server, here I use python.
-
-To install Python simple web server : 
-``` shell
-$ python -m pip install simple-http-server
-```
-
-run these commands : 
-
-``` shell
-$ cd samples/web-pkg
-$ python -m simple_http_server
-```
-
-then open [localhost:9090/web.html](localhost:9090/web.html)
-
-then look at browser console logs in verbose mode.
 
 ## Node.js sample
 
 ``` shell
-$ cd samples/node-pkg
+$ cd vss_wasm/sample/node-pkg
+$ npm install
 $ node --trace-warnings app.mjs
 ```

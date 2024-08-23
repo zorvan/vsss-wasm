@@ -1,0 +1,29 @@
+{
+  "name": "vsss-wasm",
+  "version": "0.2.0",
+  "files": [
+    "vsss_wasm.core2.wasm",
+    "vsss_wasm.core.wasm",
+    "vsss_wasm.mjs",
+    "vsss_wasm.d.ts",
+    "sample/",
+    "interfaces/"
+  ],
+  "main": "vsss_wasm.mjs",
+  "types": "vsss_wasm.d.ts",
+
+  "author": "Amin Razavi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zorvan/vsss-wasm.git"
+  },
+  "keywords": [
+    "secret sharing",
+    "verifiable secret sharing",
+    "wasm",
+    "rust",
+    "nodejs"
+  ]
+
+}

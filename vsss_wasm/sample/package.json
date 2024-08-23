@@ -1,0 +1,8 @@
+{
+  "name": "sample",
+  "version": "0.1.0",
+  "dependencies": {
+    "@bytecodealliance/preview2-shim": "^0.16.5",
+    "vsss_wasm": "0.2.0"
+  }
+}

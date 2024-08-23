@@ -1,0 +1,9 @@
+package component:vsss-component;
+
+/// An example world for the component to target.
+world vsssworld {
+    export generatesecret: func() -> result<list<u8>, string>;
+    export combinesecret: func(sharebytes: list<u8>) -> result<list<u8>, string>;
+    export splitsecret: func(secret: list<u8>) -> result<list<u8>, string>;
+    export verifysecret: func(sharebytes: list<u8>, verifybytes: list<u8>) -> result<bool, string>;
+}

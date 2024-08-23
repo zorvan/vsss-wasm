@@ -1,30 +1,31 @@
 [package]
 name = "vsss-wasm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2"
-wasm-bindgen-test = "0.3.34"
-vsss-rs = {version = "3.0.0-pre6", features = ["curve25519"]}
+#wasm-bindgen = "0.2.93"
+#wasm-bindgen-test = "0.3.34"
+wit-bindgen-rt = { version = "0.30.0", features = ["bitflags"] }
+vsss-rs = { path = "./vsss-rs" , features = ["curve25519"]}
 
-elliptic-curve = { version = "0.12", features = ["ecdh"] }
-curve25519-dalek = { version = "3" }
+elliptic-curve = { version = "0.13", features = ["ecdh"] }
+curve25519-dalek = { version = "4" }
 
 #bls12_381_plus = "0.5.5"
-#ed25519-dalek = "1.0"
-#x25519-dalek = "1.1"
+#ed25519-dalek = "2.1"
+#x25519-dalek = "2.1"
 #k256 = { version = "0.11.6", features = ["arithmetic", "bits"] }
 #p256 = { version = "0.11.1", features = ["arithmetic", "bits"] }
 
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-getrandom = { version = "0.2.8", features = ["js"]}
+getrandom = { version = "0.2.15", features = ["js"]}
 
 serde_bare = "0.5"
 
@@ -33,3 +34,20 @@ serde_bare = "0.5"
 #hex = "0.4"
 
 #console_error_panic_hook = { version = "0.1.6"}
+
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+debug = false
+strip = true
+lto = true
+
+[package.metadata]
+wasm-opt = true
+wasm-name-section = true
+wasm-producers-section = true
+
+[package.metadata.component]
+package = "component:vsssworld"
+
+[package.metadata.component.dependencies]
