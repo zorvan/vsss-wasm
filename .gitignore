@@ -1,2 +1,4 @@
-/target
+target/
 /Cargo.lock
+vsss_wasm/node_modules/
+vsss_wasm/transpiled/

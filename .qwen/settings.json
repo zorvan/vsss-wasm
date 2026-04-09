@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Read(//tmp/vsss-rs/**)",
+      "Read(//tmp/upstream-vsss-rs/**)",
+      "Bash(cargo build)",
+      "Bash(cargo tree *)",
+      "Bash(cargo test)",
+      "Bash(file *)",
+      "Bash(cargo install *)",
+      "Bash(cargo *)",
+      "Bash(cp *)",
+      "Bash(npm install *)",
+      "Bash(npx *)",
+      "Bash(node *)"
+    ]
+  },
+  "$version": 3
+}

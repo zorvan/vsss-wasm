@@ -1,17 +1,18 @@
 {
   "name": "vsss-wasm",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "type": "module",
   "files": [
     "vsss_wasm.core2.wasm",
     "vsss_wasm.core.wasm",
     "vsss_wasm.mjs",
     "vsss_wasm.d.ts",
+    "transpiled/",
     "sample/",
     "interfaces/"
   ],
   "main": "vsss_wasm.mjs",
   "types": "vsss_wasm.d.ts",
-
   "author": "Amin Razavi",
   "license": "Apache-2.0",
   "repository": {
@@ -24,6 +25,10 @@
     "wasm",
     "rust",
     "nodejs"
-  ]
-
+  ],
+  "dependencies": {
+    "@bytecodealliance/componentize-js": "^0.19.3",
+    "@bytecodealliance/preview2-shim": "^0.17.8",
+    "jco": "^1.0.0"
+  }
 }

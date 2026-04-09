@@ -1,10 +1,7 @@
-export namespace WasiFilesystemTypes {
-  export { Descriptor };
-  export function filesystemErrorCode(err: Error): ErrorCode | undefined;
-}
+/** @module Interface wasi:filesystem/types@0.2.0 **/
+export function filesystemErrorCode(err: Error): ErrorCode | undefined;
 export type Filesize = bigint;
-import type { OutputStream } from './wasi-io-streams.js';
-export { OutputStream };
+export type OutputStream = import('./wasi-io-streams.js').OutputStream;
 /**
  * # Variants
  * 
@@ -104,8 +101,7 @@ export type ErrorCode = 'access' | 'would-block' | 'already' | 'bad-descriptor' 
  */
 export type DescriptorType = 'unknown' | 'block-device' | 'character-device' | 'directory' | 'fifo' | 'symbolic-link' | 'regular-file' | 'socket';
 export type LinkCount = bigint;
-import type { Datetime } from './wasi-clocks-wall-clock.js';
-export { Datetime };
+export type Datetime = import('./wasi-clocks-wall-clock.js').Datetime;
 export interface DescriptorStat {
   type: DescriptorType,
   linkCount: LinkCount,
@@ -114,10 +110,13 @@ export interface DescriptorStat {
   dataModificationTimestamp?: Datetime,
   statusChangeTimestamp?: Datetime,
 }
-import type { Error } from './wasi-io-streams.js';
-export { Error };
+export type Error = import('./wasi-io-streams.js').Error;
 
 export class Descriptor {
+  /**
+   * This type does not have a public constructor.
+   */
+  private constructor();
   writeViaStream(offset: Filesize): OutputStream;
   appendViaStream(): OutputStream;
   getType(): DescriptorType;

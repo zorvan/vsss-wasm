@@ -1,6 +1,6 @@
 [package]
 name = "vsss-wasm"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,29 +10,20 @@ crate-type = ["cdylib"]
 
 [dependencies]
 
-wit-bindgen-rt = { version = "0.30.0", features = ["bitflags"] }
-vsss-rs = { git = "https://github.com/zorvan/vsss-rs.git" , features = ["curve25519"]}
+wit-bindgen-rt = { version = "0.39.0", features = ["bitflags"] }
+#vsss-rs = { git = "https://github.com/zorvan/vsss-rs.git", features = ["curve25519", "alloc"]}
+vsss-rs = { version = "5.3.0", features = ["curve25519", "alloc", "serde"] }
 
 elliptic-curve = { version = "0.13", features = ["ecdh"] }
 curve25519-dalek = { version = "4" }
-
-#bls12_381_plus = "0.5.5"
-#ed25519-dalek = "2.1"
-#x25519-dalek = "2.1"
-#k256 = { version = "0.11.6", features = ["arithmetic", "bits"] }
-#p256 = { version = "0.11.1", features = ["arithmetic", "bits"] }
+typenum = "1.17"
 
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 getrandom = { version = "0.2.15", features = ["js"]}
 
+serde = { version = "1.0", features = ["derive"] }
 serde_bare = "0.5"
-
-#serde_json = "1.0"
-#serde_cbor = "0.11"
-#hex = "0.4"
-
-#console_error_panic_hook = { version = "0.1.6"}
 
 [profile.release]
 codegen-units = 1
