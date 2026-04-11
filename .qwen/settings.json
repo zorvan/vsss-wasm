@@ -13,7 +13,11 @@
       "Bash(cp *)",
       "Bash(npm install *)",
       "Bash(npx *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(mkdir *)",
+      "Bash(chmod *)",
+      "Bash(rm *)",
+      "Bash(jco *)"
     ]
   },
   "$version": 3

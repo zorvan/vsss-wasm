@@ -1,5 +1,47 @@
 {
+  "name": "vsss-wasm",
+  "version": "0.3.0",
+  "description": "Verifiable Shamir Secret Sharing over WASM for Node.js",
+  "type": "module",
+  "main": "pkg/vsss_wasm.mjs",
+  "types": "pkg/vsss_wasm.d.ts",
+  "exports": {
+    ".": {
+      "import": "./pkg/vsss_wasm.mjs",
+      "types": "./pkg/vsss_wasm.d.ts"
+    }
+  },
+  "files": [
+    "pkg/vsss_wasm.core.wasm",
+    "pkg/vsss_wasm.core2.wasm",
+    "pkg/vsss_wasm.mjs",
+    "pkg/vsss_wasm.d.ts",
+    "pkg/interfaces/"
+  ],
+  "scripts": {
+    "build": "bash build.sh",
+    "build:release": "cargo component build --release --target wasm32-wasip1 && jco transpile target/wasm32-wasip1/release/vsss_wasm.wasm -o pkg"
+  },
+  "author": "Amin Razavi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zorvan/vsss-wasm.git"
+  },
+  "keywords": [
+    "secret sharing",
+    "verifiable secret sharing",
+    "shamir",
+    "vsss",
+    "wasm",
+    "rust",
+    "nodejs",
+    "cryptography"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
-    "openpgp": "^5.10.0"
+    "@bytecodealliance/preview2-shim": "^0.17.8"
   }
 }

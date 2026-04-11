@@ -1,4 +1,7 @@
 target/
 /Cargo.lock
-vsss_wasm/node_modules/
-vsss_wasm/transpiled/
+pkg/
+sample/node_modules/
+node_modules/
+/package-lock.json
+sample/package-lock.json

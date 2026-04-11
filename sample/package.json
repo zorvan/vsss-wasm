@@ -1,0 +1,9 @@
+{
+  "name": "vsss-wasm-sample",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Sample usage of vsss-wasm package",
+  "dependencies": {
+    "vsss-wasm": "file:.."
+  }
+}
