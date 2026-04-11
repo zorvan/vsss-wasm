@@ -6,9 +6,13 @@ Verifiable Shamir Secret Sharing over WASM for Node.js
 
 Porting publicly verifiable shamir secret sharing from Rust to WASM for javascript.
 
-- **Secret size**: 32 bytes
-- **Share size**: 66 bytes (1 byte length + 32 bytes identifier + 1 byte length + 32 bytes value)
-- **Verifier size**: ~133 bytes
+**Features:**
+
+- ✅ **Variable secret sizes** - Support secrets from 1 byte to hundreds of bytes
+- ✅ **Cryptographic security** - Uses XChaCha20-Poly1305 encryption
+- ✅ **Integrity verification** - SHA-256 hash verification on reconstruction
+- **Secret size**: Any size (1+ bytes)
+- **Share size**: 66 bytes each (1 byte length + 32 bytes identifier + 1 byte length + 32 bytes value)
 - **Total shares**: 5
 - **Threshold**: 3 (minimum shares needed to reconstruct)
 
@@ -21,16 +25,30 @@ npm install vsss-wasm
 ## Usage
 
 ```javascript
-import { generatesecret, splitsecret, verifysecret, combinesecret } from "vsss-wasm";
+import { generatesecret, splitsecret, combinesecret } from "vsss-wasm";
 
-// Generate a secret
+// Generate a random 32-byte secret
 const secret = generatesecret();
 
-// Split the secret into shares
-const split = splitsecret(secret);
+// Split any size secret into shares
+const splitData = splitsecret(secret);
 
-// Verify and combine shares
-const combinedsecret = combinesecret(split.slice(0, 3 * 34));
+// Reconstruct secret from full split data
+const combinedSecret = combinesecret(splitData);
+```
+
+**Example with custom secret:**
+
+```javascript
+// Split a 256-byte secret
+const mySecret = new Uint8Array(256);
+// ... fill with your data ...
+
+const splitData = splitsecret(mySecret);
+// Store shares on different systems, keep splitData safe
+
+// Later, reconstruct
+const reconstructed = combinesecret(splitData);
 ```
 
 ## Development
@@ -79,9 +97,17 @@ node --trace-warnings app.mjs
 ## API
 
 - `generatesecret(): Uint8Array` - Generate a random 32-byte secret
-- `splitsecret(secret: Uint8Array): Uint8Array` - Split secret into shares
+- `splitsecret(secret: Uint8Array): Uint8Array` - Split secret of any size into shares + metadata
 - `verifysecret(sharebytes: Uint8Array, verifybytes: Uint8Array): boolean` - Verify a share
-- `combinesecret(sharebytes: Uint8Array): Uint8Array` - Combine shares to recover secret
+- `combinesecret(fullData: Uint8Array): Uint8Array` - Reconstruct secret from full split output
+
+**Output format from `splitsecret`:**
+
+```
+[shares (5 × 66 bytes)][verifier (variable)][encrypted secret (variable)][hash (32 bytes)]
+```
+
+**Important:** Pass the **full output** of `splitsecret` to `combinesecret` for reconstruction.
 
 ## License
 
