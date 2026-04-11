@@ -99,11 +99,20 @@ pub unsafe fn __post_return_combinesecret<T: Guest>(arg0: *mut u8) {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_splitsecret_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 {
+pub unsafe fn _export_splitsecret_cabi<T: Guest>(
+    arg0: *mut u8,
+    arg1: usize,
+    arg2: i32,
+    arg3: i32,
+) -> *mut u8 {
     #[cfg(target_arch = "wasm32")]
     _rt::run_ctors_once();
     let len0 = arg1;
-    let result1 = T::splitsecret(_rt::Vec::from_raw_parts(arg0.cast(), len0, len0));
+    let result1 = T::splitsecret(
+        _rt::Vec::from_raw_parts(arg0.cast(), len0, len0),
+        arg2 as u8,
+        arg3 as u8,
+    );
     let ptr2 = _RET_AREA.0.as_mut_ptr().cast::<u8>();
     match result1 {
         Ok(e) => {
@@ -199,7 +208,11 @@ pub unsafe fn __post_return_verifysecret<T: Guest>(arg0: *mut u8) {
 pub trait Guest {
     fn generatesecret() -> Result<_rt::Vec<u8>, _rt::String>;
     fn combinesecret(sharebytes: _rt::Vec<u8>) -> Result<_rt::Vec<u8>, _rt::String>;
-    fn splitsecret(secret: _rt::Vec<u8>) -> Result<_rt::Vec<u8>, _rt::String>;
+    fn splitsecret(
+        secret: _rt::Vec<u8>,
+        sharesnumber: u8,
+        threshold: u8,
+    ) -> Result<_rt::Vec<u8>, _rt::String>;
     fn verifysecret(
         sharebytes: _rt::Vec<u8>,
         verifybytes: _rt::Vec<u8>,
@@ -227,8 +240,8 @@ macro_rules! __export_world_vsssworld_cabi{
       $($path_to_types)*::__post_return_combinesecret::<$ty>(arg0)
     }
     #[export_name = "splitsecret"]
-    unsafe extern "C" fn export_splitsecret(arg0: *mut u8,arg1: usize,) -> *mut u8 {
-      $($path_to_types)*::_export_splitsecret_cabi::<$ty>(arg0, arg1)
+    unsafe extern "C" fn export_splitsecret(arg0: *mut u8,arg1: usize,arg2: i32,arg3: i32,) -> *mut u8 {
+      $($path_to_types)*::_export_splitsecret_cabi::<$ty>(arg0, arg1, arg2, arg3)
     }
     #[export_name = "cabi_post_splitsecret"]
     unsafe extern "C" fn _post_return_splitsecret(arg0: *mut u8,) {
@@ -299,14 +312,15 @@ pub(crate) use __export_vsssworld_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.25.0:vsssworld:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 323] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc3\x01\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 348] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xdc\x01\x01A\x02\x01\
 A\x0b\x01p}\x01j\x01\0\x01s\x01@\0\0\x01\x04\0\x0egeneratesecret\x01\x02\x01@\x01\
-\x0asharebytes\0\0\x01\x04\0\x0dcombinesecret\x01\x03\x01@\x01\x06secret\0\0\x01\
-\x04\0\x0bsplitsecret\x01\x04\x01j\x01\x7f\x01s\x01@\x02\x0asharebytes\0\x0bveri\
-fybytes\0\0\x05\x04\0\x0cverifysecret\x01\x06\x04\x01\"component:vsss-component/\
-vsssworld\x04\0\x0b\x0f\x01\0\x09vsssworld\x03\0\0\0G\x09producers\x01\x0cproces\
-sed-by\x02\x0dwit-component\x070.208.1\x10wit-bindgen-rust\x060.25.0";
+\x0asharebytes\0\0\x01\x04\0\x0dcombinesecret\x01\x03\x01@\x03\x06secret\0\x0csh\
+aresnumber}\x09threshold}\0\x01\x04\0\x0bsplitsecret\x01\x04\x01j\x01\x7f\x01s\x01\
+@\x02\x0asharebytes\0\x0bverifybytes\0\0\x05\x04\0\x0cverifysecret\x01\x06\x04\x01\
+\"component:vsss-component/vsssworld\x04\0\x0b\x0f\x01\0\x09vsssworld\x03\0\0\0G\
+\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.208.1\x10wit-bindgen\
+-rust\x060.25.0";
 
 #[inline(never)]
 #[doc(hidden)]

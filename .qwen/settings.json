@@ -17,7 +17,8 @@
       "Bash(mkdir *)",
       "Bash(chmod *)",
       "Bash(rm *)",
-      "Bash(jco *)"
+      "Bash(jco *)",
+      "Bash(npm run *)"
     ]
   },
   "$version": 3

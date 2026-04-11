@@ -6,13 +6,12 @@ use rand::{rngs::OsRng, SeedableRng, RngCore};
 use rand_chacha::ChaCha20Rng;
 use vsss_rs::{
     curve25519::{WrappedRistretto, WrappedScalar},
-    feldman::Feldman,
+    feldman,
     DefaultShare,
     IdentifierPrimeField,
     ReadableShareSet,
     ValueGroup,
 };
-use vsss_rs::feldman::GenericArrayFeldmanVsss;
 use sha2::{Sha256, Digest};
 use chacha20poly1305::{XChaCha20Poly1305, Key, KeyInit, aead::{Aead, AeadCore}};
 use chacha20poly1305::aead::OsRng as AeadOsRng;
@@ -21,11 +20,11 @@ use chacha20poly1305::aead::OsRng as AeadOsRng;
 // Constants
 // ============================================================================
 
-/// Number of shares to generate
-pub const SHARES_NUMBER: usize = 5;
+/// Default number of shares to generate
+pub const DEFAULT_SHARES_NUMBER: usize = 5;
 
-/// Minimum number of shares required to reconstruct the secret
-pub const THRESHOLD: usize = 3;
+/// Default minimum number of shares required to reconstruct the secret
+pub const DEFAULT_THRESHOLD: usize = 3;
 
 /// Encoded size of each share in bytes (serde_bare format)
 /// Format: 1 (len) + 32 (identifier) + 1 (len) + 32 (value) = 66 bytes
@@ -50,9 +49,6 @@ type Curve25519ShareVerifier = ValueGroup<WrappedRistretto>;
 /// Curve25519 verifier set type (Vec for serialization convenience)
 type Curve25519VerifierSet = Vec<Curve25519ShareVerifier>;
 
-/// Curve25519 Feldman VSSS type with threshold=3, shares=5
-type Curve25519FeldmanVsss = GenericArrayFeldmanVsss<Curve25519Share, Curve25519ShareVerifier, typenum::U3, typenum::U5>;
-
 // ============================================================================
 // Component Implementation
 // ============================================================================
@@ -70,13 +66,33 @@ impl Guest for Component {
 
     /// Split a secret into shares using Feldman Verifiable Secret Sharing Scheme
     /// Supports secrets of any size by encrypting with a split key
-    fn splitsecret(secret: Vec<u8>) -> Result<Vec<u8>, String> {
+    /// 
+    /// # Arguments
+    /// * `secret` - The secret to split (any size, must not be empty)
+    /// * `shares_number` - Number of shares to generate (must be >= threshold)
+    /// * `threshold` - Minimum number of shares needed to reconstruct (must be >= 2)
+    fn splitsecret(secret: Vec<u8>, shares_number: u8, threshold: u8) -> Result<Vec<u8>, String> {
         if secret.is_empty() {
             return Err("Secret cannot be empty".to_string());
         }
 
+        let shares_number = shares_number as usize;
+        let threshold = threshold as usize;
+
+        if threshold < 2 {
+            return Err("Threshold must be at least 2".to_string());
+        }
+
+        if shares_number < threshold {
+            return Err("Shares number must be at least threshold".to_string());
+        }
+
+        if shares_number > 255 {
+            return Err("Shares number cannot exceed 255".to_string());
+        }
+
         let mut osrng = OsRng::default();
-        
+
         // Generate a random 32-byte key
         let mut key_bytes = [0u8; 64];
         osrng.fill_bytes(&mut key_bytes);
@@ -91,11 +107,11 @@ impl Guest for Component {
         // Encrypt the secret with the key
         let encrypted_secret = encrypt_with_key(&key, &secret)?;
 
-        // Split the key using Feldman VSSS
+        // Split the key using Feldman VSSS (runtime-configurable)
         let key_value = parse_secret_scalar(&key)?;
-        let (shares, verifier_set) = Curve25519FeldmanVsss::split_secret_with_verifier(
-            THRESHOLD,
-            SHARES_NUMBER,
+        let (shares, verifier_set) = feldman::split_secret::<Curve25519Share, Curve25519ShareVerifier>(
+            threshold,
+            shares_number,
             &key_value,
             None,
             &mut osrng,
@@ -103,11 +119,20 @@ impl Guest for Component {
         .map_err(|e| e.to_string())?;
 
         // Serialize shares
-        let mut result_bytes = serialize_shares(&shares)?;
-
-        // Serialize verifier set
+        let mut result_bytes = Vec::new();
+        
+        // Serialize verifier set first to know its size
         let verifier_vec: Vec<Curve25519ShareVerifier> = verifier_set.to_vec();
         let verifier_bytes = serde_bare::to_vec(&verifier_vec).map_err(|e| e.to_string())?;
+        let verifier_size = verifier_bytes.len();
+        
+        // Prepend shares number, threshold, and verifier size (u16 big-endian)
+        result_bytes.push(shares_number as u8);
+        result_bytes.push(threshold as u8);
+        result_bytes.extend_from_slice(&(verifier_size as u16).to_be_bytes());
+        
+        let shares_serialized = serialize_shares(&shares)?;
+        result_bytes.extend_from_slice(&shares_serialized);
         result_bytes.extend_from_slice(&verifier_bytes);
 
         // Append: [shares][verifier][encrypted_secret][secret_hash(32 bytes)]
@@ -132,14 +157,27 @@ impl Guest for Component {
     }
 
     /// Combine shares to reconstruct the original secret
-    /// Input: [shares][verifier][encrypted_secret][secret_hash]
+    /// Input: [shares_count(1)][threshold(1)][verifier_size(2)][shares][verifier][encrypted_secret][hash]
     fn combinesecret(full_data: Vec<u8>) -> Result<Vec<u8>, String> {
-        // Parse the structure
-        let shares_len = SHARES_NUMBER * ENCODED_SIZE;
+        // Header: shares_count (1 byte) + threshold (1 byte) + verifier_size (2 bytes)
+        if full_data.len() < 4 {
+            return Err("Data too short".to_string());
+        }
         
-        // Extract verifier (variable size, need to parse)
-        // For now, assume shares are at the beginning
-        let share_data = &full_data[..shares_len];
+        let shares_count = full_data[0] as usize;
+        let shares_len = shares_count * ENCODED_SIZE;
+        let verifier_size = u16::from_be_bytes([full_data[2], full_data[3]]) as usize;
+        
+        let shares_start = 4; // After the header
+        let shares_end = shares_start + shares_len;
+        let verifier_end = shares_end + verifier_size;
+        
+        if full_data.len() < verifier_end + HASH_SIZE {
+            return Err(format!("Invalid data size: expected at least {} bytes, got {}", 
+                             verifier_end + HASH_SIZE, full_data.len()));
+        }
+        
+        let share_data = &full_data[shares_start..shares_end];
         let shares = deserialize_shares(share_data)?;
 
         // Reconstruct the key
@@ -149,22 +187,16 @@ impl Guest for Component {
         let key = scalar.0 .0.to_bytes().to_vec();
 
         // Extract hash (last 32 bytes)
-        if full_data.len() < shares_len + HASH_SIZE {
-            return Err("Invalid full data size".to_string());
-        }
         let expected_hash = &full_data[full_data.len() - HASH_SIZE..];
-        
-        // Extract encrypted secret (between verifier and hash)
-        // We need to know verifier size - parse it
-        let verifier_data = &full_data[shares_len..];
-        let verifier_size = parse_verifier_size(verifier_data)?;
-        let encrypted_start = shares_len + verifier_size;
+
+        // Extract encrypted secret
+        let encrypted_start = verifier_end;
         let encrypted_end = full_data.len() - HASH_SIZE;
-        
+
         if encrypted_start >= encrypted_end {
             return Err("Invalid encrypted secret position".to_string());
         }
-        
+
         let encrypted_secret = &full_data[encrypted_start..encrypted_end];
 
         // Decrypt
@@ -213,20 +245,6 @@ fn decrypt_with_key(key: &[u8], encrypted_data: &[u8]) -> Result<Vec<u8>, String
     
     cipher.decrypt(nonce_array, ciphertext)
         .map_err(|e| format!("Decryption failed: {}", e))
-}
-
-/// Parse verifier size from serialized data
-fn parse_verifier_size(data: &[u8]) -> Result<usize, String> {
-    // Use serde_bare to peek at the verifier vec size
-    // This is a workaround - we serialize/deserialize to find the size
-    let test: Result<Vec<Curve25519ShareVerifier>, _> = serde_bare::from_slice(data);
-    match test {
-        Ok(verifiers) => {
-            let serialized = serde_bare::to_vec(&verifiers).map_err(|e| e.to_string())?;
-            Ok(serialized.len())
-        }
-        Err(e) => Err(e.to_string())
-    }
 }
 
 /// Parse a secret from bytes into the required field element
@@ -290,17 +308,20 @@ mod tests {
     fn test_secret_sharing_workflow() {
         // Generate secret
         let secret = Component::generatesecret().unwrap();
-        assert_eq!(secret.len(), 32); // Scalar is 32 bytes
+        assert_eq!(secret.len(), 32);
 
-        // Split secret
-        let split_result = Component::splitsecret(secret.clone()).unwrap();
+        // Split with default parameters (5 shares, threshold 3)
+        let split_result = Component::splitsecret(secret.clone(), DEFAULT_SHARES_NUMBER as u8, DEFAULT_THRESHOLD as u8).unwrap();
 
-        // Verify all shares
-        let shares_len = SHARES_NUMBER * ENCODED_SIZE;
+        // Header is 4 bytes: shares_count(1) + threshold(1) + verifier_size(2)
+        let header_size = 4;
+        let shares_len = header_size + (DEFAULT_SHARES_NUMBER * ENCODED_SIZE);
         let verifier = &split_result[shares_len..];
 
-        for i in 0..SHARES_NUMBER {
-            let share = &split_result[i * ENCODED_SIZE..(i + 1) * ENCODED_SIZE];
+        for i in 0..DEFAULT_SHARES_NUMBER {
+            let share_start = header_size + (i * ENCODED_SIZE);
+            let share_end = share_start + ENCODED_SIZE;
+            let share = &split_result[share_start..share_end];
             let valid = Component::verifysecret(share.to_vec(), verifier.to_vec()).unwrap();
             assert!(valid, "Share {} should be valid", i);
         }
@@ -315,13 +336,62 @@ mod tests {
     fn test_variable_secret_size() {
         // Test with different secret sizes
         let test_sizes = vec![1, 16, 32, 64, 128, 256];
-        
+
         for size in test_sizes {
             let secret: Vec<u8> = (0..size).map(|i| (i % 256) as u8).collect();
-            let split_result = Component::splitsecret(secret.clone()).unwrap();
+            let split_result = Component::splitsecret(secret.clone(), DEFAULT_SHARES_NUMBER as u8, DEFAULT_THRESHOLD as u8).unwrap();
             let reconstructed = Component::combinesecret(split_result).unwrap();
             assert_eq!(reconstructed, secret, "Failed for size {}", size);
         }
+    }
+
+    #[test]
+    fn test_variable_shares_number() {
+        let configs = vec![
+            (3, 2),
+            (5, 3),
+        ];
+
+        let secret = Component::generatesecret().unwrap();
+
+        for (shares, threshold) in configs {
+            println!("\n=== Testing shares={}, threshold={} ===", shares, threshold);
+            let split_result = Component::splitsecret(secret.clone(), shares as u8, threshold as u8).unwrap();
+            println!("Total size: {}", split_result.len());
+            println!("Header: shares={}, threshold={}, verifier_size={}", 
+                     split_result[0], split_result[1], 
+                     u16::from_be_bytes([split_result[2], split_result[3]]));
+            
+            let header_size = 4;
+            let shares_count = split_result[0] as usize;
+            let verifier_size = u16::from_be_bytes([split_result[2], split_result[3]]) as usize;
+            let shares_data_size = shares_count * ENCODED_SIZE;
+            let shares_end = header_size + shares_data_size;
+            let verifier_end = shares_end + verifier_size;
+            let encrypted_size = split_result.len() - verifier_end - HASH_SIZE;
+            
+            println!("Shares: {} bytes ({}..{})", shares_data_size, header_size, shares_end);
+            println!("Verifier: {} bytes ({}..{})", verifier_size, shares_end, verifier_end);
+            println!("Encrypted: {} bytes ({}..{})", encrypted_size, verifier_end, split_result.len() - HASH_SIZE);
+            println!("Hash: 32 bytes ({}..{})", split_result.len() - HASH_SIZE, split_result.len());
+            
+            let reconstructed = Component::combinesecret(split_result).unwrap();
+            assert_eq!(reconstructed, secret, "Failed for shares={} threshold={}", shares, threshold);
+        }
+    }
+
+    #[test]
+    fn test_invalid_parameters() {
+        let secret = vec![1, 2, 3, 4];
+
+        // Threshold less than 2
+        assert!(Component::splitsecret(secret.clone(), 3, 1).is_err());
+
+        // Shares less than threshold
+        assert!(Component::splitsecret(secret.clone(), 2, 3).is_err());
+
+        // Empty secret
+        assert!(Component::splitsecret(vec![], 3, 2).is_err());
     }
 }
 
